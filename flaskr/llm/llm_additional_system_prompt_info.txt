@@ -1,0 +1,20 @@
+Additional information on how to identify these fields are provided here:
+Subject: highlights the patients involved in themedical event. Sub-arguments of subject are:
+Subject.Age: concrete age or span that indicates an age range.
+Subject.Gender: the span that indicates the subject’s gender.
+Subject.Population: the number of patients receiving the treatment.
+Subject.Race: the span that indicates the subject’s race/nationality.
+Subject.Disorder: preexisting conditions, i.e., disorders that the subject suffers other than the target disorder of the treatment.
+Treatment: describes the therapy administered to the patients.
+Treatment.Drug: drugs used as therapy in the event.
+Treatment.Dosage: the amount of the drug is given.
+Treatment.Frequency: the frequency of drug use.
+Treatment.Route: the route of drug administration.
+Treatment.Time_elapsed: the time elapsed after the drug was administered to the occurrence of the (side) effect.
+Treatment.Duration: how long the patient has been taking the medicine (usually for long-term medication).
+Treatment.Disorder: the target disorder of the medicine administration.
+Effect: indicates the outcome of the treatment.
+Attributes interpret certain properties of events, i.e., indicating whether an event is negated or speculated, and the severity level of the event.
+negated: the attribute negated denotes whether or not there is any textual cues showing the event is negated, i.e., for ADE, the adverse effect does not exist; or for PTE, the therapy is ineffective.
+speculated: the attribute speculated indicates if there is any uncertain or speculation as to whether an event will actually happen. Considering the speculative nature of the medical case reports, we only annotate a speculated attribute when the speculative attitude of the author is explicitly remarked.
+severity: the attribute severity refers to the severity level of the adverse effect. For example, the fatal effect is a ‘high severity’, while a minor symptom could be a ‘low severity’. In general, we do not annotate ‘severity’ for PTE events.
