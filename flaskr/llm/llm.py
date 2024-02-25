@@ -1,5 +1,5 @@
 from llama_cpp import Llama
-from schema import Record
+from .schema import Record
 
 LLM_REPO_ID = "TheBloke/Mistral-7B-Instruct-v0.2-GGUF"
 LLM_FILENAME = "mistral-7b-instruct-v0.2.Q2_K.gguf" # smallest version so my laptop doesn't cry
@@ -80,36 +80,36 @@ Ensure the JSON is valid and contains the correct data types.
 def chat_with_llm(prompt):
     llm = load_llm()
     
-    # return llm.create_chat_completion( # Non-streaming
-    #     messages=[
-    #         {
-    #             "role" : "user",
-    #             "content" : "<s>" + mistral_inst_prompt(prompt)
-    #         },
-    #     ],
-    #     max_tokens=4096,
-    #     temperature=0.5,
-    #     stop=["</s>"],
-    # )["choices"][0]["message"]["content"]
-    
-    # Streaming version
-    output = llm.create_chat_completion(
+    return llm.create_chat_completion( # Non-streaming
         messages=[
             {
                 "role" : "user",
-                "content" : prompt
+                "content" : "<s>" + mistral_inst_prompt(prompt)
             },
         ],
         max_tokens=4096,
         temperature=0.5,
         stop=["</s>"],
-        stream=True,
-    )
-    for chunk in output: # https://github.com/abetlen/llama-cpp-python/discussions/319
-        delta = chunk['choices'][0]['delta']
-        if 'role' in delta:
-            print(delta['role'], end=': ')
-        elif 'content' in delta:
-            print(delta['content'], end='')
+    )["choices"][0]["message"]["content"]
+    
+    # Streaming version
+    # output = llm.create_chat_completion(
+    #     messages=[
+    #         {
+    #             "role" : "user",
+    #             "content" : prompt
+    #         },
+    #     ],
+    #     max_tokens=4096,
+    #     temperature=0.5,
+    #     stop=["</s>"],
+    #     stream=True,
+    # )
+    # for chunk in output: # https://github.com/abetlen/llama-cpp-python/discussions/319
+    #     delta = chunk['choices'][0]['delta']
+    #     if 'role' in delta:
+    #         print(delta['role'], end=': ')
+    #     elif 'content' in delta:
+    #         print(delta['content'], end='')
             
     # figure out how to stream the response back to the user

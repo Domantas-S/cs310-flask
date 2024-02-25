@@ -1,1 +1,2 @@
 .env
+flaskr/__pycache__/*
