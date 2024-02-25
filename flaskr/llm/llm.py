@@ -1,4 +1,7 @@
-from llama_cpp import Llama
+from llama_cpp import Llama, LogitsProcessorList, LlamaGrammar
+from lmformatenforcer import JsonSchemaParser, CharacterLevelParser
+from lmformatenforcer.integrations.transformers import build_transformers_prefix_allowed_tokens_fn
+from lmformatenforcer.integrations.llamacpp import build_llamacpp_logits_processor, build_token_enforcer_tokenizer_data
 from .schema import Record
 
 LLM_REPO_ID = "TheBloke/Mistral-7B-Instruct-v0.2-GGUF"
@@ -19,18 +22,30 @@ def load_llm():
     
     return llm
 
+
 def annotate_text(query : str): # Possibly stream this too?
     llm = load_llm()    # in practice, the llm would be loaded on startup and kept in memory
     print("LLM loaded")
+    
+    # Format enforcer
+    tokenizer_data = build_token_enforcer_tokenizer_data(llm)
+    parser = JsonSchemaParser(Record.model_json_schema())
+    logits_processors = LogitsProcessorList([build_llamacpp_logits_processor(tokenizer_data, parser)])
+    
+    # load grammar
+    with open("/Users/domantas/Documents/cs310-flask/flaskr/llm/grammar.gbnf", "r") as f:
+        grammar_text = f.read()
+        grammar = LlamaGrammar.from_string(grammar_text)
     
     extra_info = ""
     with open("/Users/domantas/Documents/cs310-flask/flaskr/llm/llm_additional_system_prompt_info.txt", "r", encoding="utf-8") as f:
         extra_info = f.read()
     
+    # Removed schema from prompt {str(Record.schema_json())}
     system_message = f"""
 You are a helpful AI that can extract information from electronic health records.
 Given an electronic health record, extract the relevant information to produce a JSON of the following schema:
-{str(Record.schema_json())}
+
 {extra_info}
 Start is the starting index of where that annotation appears within the text.
 Event type must be either of Adverse_event or Potential_therapeutic_effect.
@@ -44,7 +59,7 @@ Ensure the JSON is valid and contains the correct data types.
         messages=[
             {
                 "role" : "user",
-                "content" : "<s>" + mistral_inst_prompt(system_message + '12962465_2 Gynaecomastia is a rarely reported adverse drug reaction due to isoniazid therapy.')
+                "content" : system_message + '12962465_2 Gynaecomastia is a rarely reported adverse drug reaction due to isoniazid therapy.'
             },
             {
                 "role" : "assistant",
@@ -52,7 +67,7 @@ Ensure the JSON is valid and contains the correct data types.
             },
             {
                 "role" : "user",
-                "content" : mistral_inst_prompt('7986915_2 We describe a patient with a liver abscess due to Entamoeba histolytica, in whom metronidazole therapy (total dose, 21 g over 14 days) was complicated by reversible deafness, tinnitus, and ataxia and who relapsed 5 months later with a splenic abscess.')
+                "content" : '7986915_2 We describe a patient with a liver abscess due to Entamoeba histolytica, in whom metronidazole therapy (total dose, 21 g over 14 days) was complicated by reversible deafness, tinnitus, and ataxia and who relapsed 5 months later with a splenic abscess.'
                 
             },
             {
@@ -61,16 +76,18 @@ Ensure the JSON is valid and contains the correct data types.
             },
             {
                 "role" : "user",
-                "content" : mistral_inst_prompt(query)
+                "content" : query
             },
         ],
         max_tokens=4096,
         temperature=0.5,
         stop=["</s>"],
-        response_format={
-            "type": "json_object",
-            "schema" : Record.schema_json(),
-        },
+        # response_format={ # Using built-in llama cpp response format is not strict and introduces fields that are not in the schema
+        #     "type": "json_object",
+        #     "schema" : Record.schema_json(),
+        # },
+        # logits_processor=logits_processors  # Format enforcer
+        grammar=grammar # Try format outputs with a grammar
     )
     
     print(output)

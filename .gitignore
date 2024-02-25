@@ -1,2 +1,3 @@
 .env
 flaskr/__pycache__/*
+flaskr/llm/__pycache__/*
