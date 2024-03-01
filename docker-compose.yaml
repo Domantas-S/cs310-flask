@@ -1,0 +1,8 @@
+version: '3'
+
+services:
+  flaskapp:
+    build: '.'
+    ports:
+      - '5000:5000'
+    command: 'flask --app flaskr/app.py run --debug --host="0.0.0.0" --port=5000'

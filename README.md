@@ -2,8 +2,9 @@
 
 ## Run
 `source .env/bin/activate`
-`deactivate` to leave venv
+
 `flask --app flaskr/app.py run --debug`
 
+`deactivate` to leave venv
 
 TODO: requirements.txt
