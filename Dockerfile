@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # ENV FLASK_APP=flaskr
+ENV PYTHON_PATH=flaskr
 
 # Run the application
 # RUN flask --app flaskr/app.py run --debug --host="0.0.0.0"

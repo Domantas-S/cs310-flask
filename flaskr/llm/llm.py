@@ -33,12 +33,12 @@ def annotate_text(query : str): # Possibly stream this too?
     logits_processors = LogitsProcessorList([build_llamacpp_logits_processor(tokenizer_data, parser)])
     
     # load grammar
-    with open("/Users/domantas/Documents/cs310-flask/flaskr/llm/grammar.gbnf", "r") as f:
+    with open("flaskr/llm/grammar.gbnf", "r") as f:
         grammar_text = f.read()
         grammar = LlamaGrammar.from_string(grammar_text)
     
     extra_info = ""
-    with open("/Users/domantas/Documents/cs310-flask/flaskr/llm/llm_additional_system_prompt_info.txt", "r", encoding="utf-8") as f:
+    with open("flaskr/llm/llm_additional_system_prompt_info.txt", "r", encoding="utf-8") as f:
         extra_info = f.read()
     
     # Removed schema from prompt {str(Record.schema_json())}

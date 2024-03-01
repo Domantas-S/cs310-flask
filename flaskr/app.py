@@ -15,6 +15,7 @@ def hello():
 @app.route("/annotate", methods=["POST"])
 def annotate():
     data = request.get_json()
+    print(data)
 
     return annotate_text(data["text"])
 
