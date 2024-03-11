@@ -1,8 +1,9 @@
-from llama_cpp import Llama, LogitsProcessorList, LlamaGrammar
-from lmformatenforcer import JsonSchemaParser, CharacterLevelParser
-from lmformatenforcer.integrations.transformers import build_transformers_prefix_allowed_tokens_fn
-from lmformatenforcer.integrations.llamacpp import build_llamacpp_logits_processor, build_token_enforcer_tokenizer_data
-from .schema import Record
+import untruncate_json
+import os
+from pathlib import Path
+from llama_cpp import Llama, LlamaGrammar
+
+PATH = Path(__file__).parent.resolve()
 
 LLM_REPO_ID = "TheBloke/Mistral-7B-Instruct-v0.2-GGUF"
 LLM_FILENAME = "mistral-7b-instruct-v0.2.Q2_K.gguf" # smallest version so my laptop doesn't cry
@@ -16,8 +17,9 @@ def load_llm():
     llm = Llama.from_pretrained(
         repo_id=LLM_REPO_ID,
         filename=LLM_FILENAME,
-        n_ctx=4096,
+        n_ctx=2048,
         n_gpu_layers=-1,
+        chat_format="mistral-instruct"
     )
     
     return llm
@@ -27,52 +29,42 @@ def annotate_text(query : str): # Possibly stream this too?
     llm = load_llm()    # in practice, the llm would be loaded on startup and kept in memory
     print("LLM loaded")
     
-    # Format enforcer
-    tokenizer_data = build_token_enforcer_tokenizer_data(llm)
-    parser = JsonSchemaParser(Record.model_json_schema())
-    logits_processors = LogitsProcessorList([build_llamacpp_logits_processor(tokenizer_data, parser)])
-    
     # load grammar
-    with open("flaskr/llm/grammar.gbnf", "r") as f:
+    with open(PATH / "grammar.gbnf", "r") as f:
         grammar_text = f.read()
         grammar = LlamaGrammar.from_string(grammar_text)
     
-    extra_info = ""
-    with open("flaskr/llm/llm_additional_system_prompt_info.txt", "r", encoding="utf-8") as f:
+    with open(PATH / "llm_additional_system_prompt_info.txt", "r", encoding="utf-8") as f:
         extra_info = f.read()
-    
-    # Removed schema from prompt {str(Record.schema_json())}
-    system_message = f"""
-You are a helpful AI that can extract information from electronic health records.
-Given an electronic health record, extract the relevant information to produce a JSON of the following schema:
 
-{extra_info}
-Start is the starting index of where that annotation appears within the text.
-Event type must be either of Adverse_event or Potential_therapeutic_effect.
-If an optional field is not present, it should be entirely omitted from the JSON. Required fields must not be empty.
-Ensure the JSON is valid and contains the correct data types.
-"""
+    system_message = f"""
+    You are a helpful AI that can extract information from electronic health records.
+    Given an electronic health record, extract the relevant information to produce a JSON with the following fields:
+    {extra_info}
+    Event type must be either of Adverse_event or Potential_therapeutic_effect.
+    If a annotaion field is not present, don't include it in the JSON.
+    Ensure the JSON is valid and contains the correct data types.
+    """
     
     
-    # Annotate the text
+    #Annotate the text
     output = llm.create_chat_completion(
         messages=[
             {
                 "role" : "user",
-                "content" : system_message + '12962465_2 Gynaecomastia is a rarely reported adverse drug reaction due to isoniazid therapy.'
+                "content" : system_message + '7978578_1 Response of a promethazine-induced coma to flumazenil.'
             },
             {
                 "role" : "assistant",
-                "content" : "{'id': '12962465_2', 'context': 'Gynaecomastia is a rarely reported adverse drug reaction due to isoniazid therapy.', 'is_mult_event': False, 'annotations': [{'events': [{'event_id': 'E1', 'event_type': 'Adverse_event', 'Trigger': {'text': [['adverse drug reaction']], 'start': [[35]], 'entity_id': ['T4']}, 'Treatment': {'text': [['isoniazid therapy']], 'start': [[64]], 'entity_id': ['T3'], 'Drug': {'text': [['isoniazid']], 'start': [[64]], 'entity_id': ['T6']}, 'Effect': {'text': [['Gynaecomastia']], 'start': [[0]], 'entity_id': ['T5']}}]}]}"
+                "content" : '{"id":"7978578_1","context":"Response of a promethazine-induced coma to flumazenil.","events":[{"type":"Adverse_event","annotations":[{"annotation":"Trigger","text":"induced"},{"annotation":"Treatment","text":"promethazine"},{"annotation":"Treatment.Drug","text":"promethazine"},{annotation":"Effect","text":"coma"}]},{"type":"Potential_therapeutic_event","annotations":[{"annotation":"Trigger","text":"Response"},{"annotation":"Treatment","text":"flumazenil"},{"annotation":"Treatment.Disorder","text":"promethazine-induced coma"},{"annotation":"Treatment.Drug","text":"flumazenil"}]}]}',
             },
             {
                 "role" : "user",
-                "content" : '7986915_2 We describe a patient with a liver abscess due to Entamoeba histolytica, in whom metronidazole therapy (total dose, 21 g over 14 days) was complicated by reversible deafness, tinnitus, and ataxia and who relapsed 5 months later with a splenic abscess.'
-                
+                "content" : '16728538_2 Drug-induced hepatitis in an acromegalic patient during combined treatment with pegvisomant and octreotide long-acting repeatable attributed to the use of pegvisomant.'
             },
             {
                 "role" : "assistant",
-                "content" : '{"id": "7986915_2", "context": "We describe a patient with a liver abscess due to Entamoeba histolytica, in whom metronidazole therapy (total dose, 21 g over 14 days) was complicated by reversible deafness, tinnitus, and ataxia and who relapsed 5 months later with a splenic abscess.", "is_mult_event": false, "annotations": [{"events": [{"event_id": "E1", "event_type": "Adverse_event", "Trigger": {"text": [["complicated"]], "start": [[139]], "entity_id": ["T13"]}, "Subject": {"text": [["a patient with a liver abscess due to Entamoeba histolytica"]], "start": [[12]], "entity_id": ["T11"]}, "Treatment": {"text": [["metronidazole therapy (total dose, 21 g over 14 days)"]], "start": [[81]], "entity_id": ["T12"], "Drug": {"text": [["metronidazole"]], "start": [[81]], "entity_id": ["T17"]}, "Dosage": {"text": [["21 g"]], "start": [[116]], "entity_id": ["T18"]}, "Duration": {"text": [["14 days"]], "start": [[126]], "entity_id": ["T19"]}, "Disorder": {"text": [["liver abscess"], ["Entamoeba histolytica"]], "start": [[29], [50]], "entity_id": ["T20", "T21"]}}, "Effect": {"text": [["reversible deafness, tinnitus, and ataxia and who relapsed 5 months later with a splenic abscess"]], "start": [[154]], "entity_id": ["T14"]}}]}]}'
+                "content" : '{"id":"16728538_2","context":"Drug-induced hepatitis in an acromegalic patient during combined treatment with pegvisomant and octreotide long-acting repeatable attributed to the use of pegvisomant.","events":[{"type":"Adverse_event","annotations":[{"annotation":"Trigger","text":"induced"},{"annotation":"Effect","text":"hepatitis"},{"annotation":"Treatment","text":"combined treatment with pegvisomant and octreotide long-acting repeatable"},{"annotation":"Treatment.Disorder","text":"acromegalic"},{"annotation":"Treatment.Drug","text":"pegvisomant"},{"annotation":"Treatment.Drug","text":"octreotide"},{"annotation":"Treatment.Combination.Trigger","text":"and"},{"annotation":"Treatment.Combination.Drug","text":"pegvisomant"},{"annotation":"Treatment.Combination.Drug","text":"octreotide"},{"annotation":"Subject","text":"an acromegalic patient"},{"annotation":"Subject.Disorder","text":"acromegalic"}]}]}'
             },
             {
                 "role" : "user",
@@ -82,16 +74,12 @@ Ensure the JSON is valid and contains the correct data types.
         max_tokens=4096,
         temperature=0.5,
         stop=["</s>"],
-        # response_format={ # Using built-in llama cpp response format is not strict and introduces fields that are not in the schema
-        #     "type": "json_object",
-        #     "schema" : Record.schema_json(),
-        # },
-        # logits_processor=logits_processors  # Format enforcer
-        grammar=grammar # Try format outputs with a grammar
+        grammar=grammar # Format outputs with a grammar
     )
     
-    print(output)
-    return output["choices"][0]["message"]["content"]
+    result = output["choices"][0]["message"]["content"].replace("\n", "").replace('\\', '')
+    result = untruncate_json.complete(result)
+    return result
 
 
 def chat_with_llm(prompt):
