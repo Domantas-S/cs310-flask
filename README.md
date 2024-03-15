@@ -7,4 +7,6 @@
 
 `deactivate` to leave venv
 
-TODO: requirements.txt
+
+## FLAN-T5 AND UIE MODELS
+Send a request to me for these models.
