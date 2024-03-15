@@ -33,5 +33,6 @@ torch==2.2.1
 tqdm==4.66.2
 transformers==4.38.1
 typing_extensions==4.9.0
+untruncate-json==1.0.0
 urllib3==2.2.1
 Werkzeug==3.0.1
